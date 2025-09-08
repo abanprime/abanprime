@@ -389,12 +389,12 @@ This endpoint allows a user to initiate a new bank withdrawal request.
       "paymentId": "OptionalPaymentId", // Optional: A reference or payment ID.
       "note": "Optional note about the withdrawal", // Optional: A note for the request.
       "trackId": "GUID_STRING" // Optional: A unique ID for tracking the request. If not provided, a new one will be generated.
-      // "otpCode": "123456", // Required: One-Time Password if 2FA is enabled for the user.
+      // "AuthenticatorOtp": "123456", // Required: One-Time Password if 2FA is enabled for the user.
     }
     ```
     *   **Note:**
         *   The `Fee` is calculated automatically by the system and any provided `fee` in the request body will be ignored.
-        *   If Two-Factor Authentication (2FA) is enabled for the user, an `otpCode` will be required in the request body.
+        *   If Two-Factor Authentication (2FA) is enabled for the user, an `AuthenticatorOtp` will be required in the request body.
 *   **Successful Response (`200 OK`):**
     ```json
     {
@@ -423,7 +423,7 @@ This endpoint allows a user to initiate a new bank withdrawal request.
     ```
 *   **Error Responses:**
     *   `400 Bad Request`: If `amount` is 0, or if required fields are missing, or if IBAN is invalid.
-    *   `401 Unauthorized`: If the user is not authenticated or 2FA is required but `otpCode` is missing/invalid.
+    *   `401 Unauthorized`: If the user is not authenticated.
 
 ### 3. Preview Bank Withdraw Request
 
@@ -504,3 +504,158 @@ This endpoint allows a user to retrieve the details of a specific bank withdrawa
 *   **Error Responses:**
     *   `400 Bad Request`: If the requested bank withdrawal request does not belong to the authenticated user (and the user is not an admin).
     *   `404 Not Found`: If no bank withdrawal request with the given `requestId` exists.
+
+# Crypto Withdraw API Documentation
+
+This document outlines the user-facing API endpoints for managing crypto withdrawal requests. All endpoints require authentication.
+
+## Endpoints
+
+### 1. Create Crypto Withdrawal Request
+
+Creates a new crypto withdrawal request for the authenticated user.
+
+*   **URL**: `crypto-withdraw/crypto-withdraw-request`
+*   **Method**: `POST`
+*   **Authentication**: Required
+*   **Request Body**: `application/json`
+    ```json
+    {
+        "assetSymbol": "string",
+        "amount": "decimal",
+        "networkName": "string",
+        "destinationWallet": "string",
+        "trackId": "string (optional)",
+        "otp": "string"
+    }
+    ```
+    *   **`assetSymbol`** (string, required): The symbol of the cryptocurrency to withdraw (e.g., "USDT").
+    *   **`amount`** (decimal, required): The amount of the cryptocurrency to withdraw.
+    *   **`networkName`** (string, required): The name of the blockchain network (e.g., "TRC20", "BSC").
+    *   **`destinationWallet`** (string, required): The public key of the destination wallet address.
+    *   **`trackId`** (string, optional): A unique client-generated ID to track the request. If provided, it must be unique; otherwise, a validation error will occur.
+    *   **`authenticatorOtp`** (string, required): One-Time Password for two-factor authentication if enabled by user.
+*   **Responses**:
+    *   `200 OK`:
+        ```json
+        {
+            // Details of the created WithdrawCryptoRequest object
+            "id": "int",
+            "asset": { "symbol": "string", ... },
+            "amount": "decimal",
+            "transferRequestNetwork": { "name": "string", ... },
+            "transferType": "string",
+            "state": "string", // e.g., "New", "Processing", "Completed"
+            "createdAt": "datetime",
+            // ... other relevant properties
+        }
+        ```
+    *   `400 Bad Request`: If validation fails (e.g., invalid wallet address, duplicate `trackId`, insufficient balance, invalid OTP).
+
+---
+
+### 2. List Crypto Withdrawal Requests
+
+Retrieves a paginated list of crypto withdrawal requests for the authenticated user.
+
+*   **URL**: `crypto-withdraw/crypto-withdraw-requests`
+*   **Method**: `GET`
+*   **Authentication**: Required
+*   **Query Parameters**:
+    *   **`pagination.Page`** (integer, optional): The page number to retrieve. Defaults to `1`.
+    *   **`pagination.PageSize`** (integer, optional): The number of items per page. Defaults to a system-defined value.
+    *   **`sort.Desc`** (boolean, optional): Set to `true` for descending order, `false` for ascending. Defaults to `true`.
+    *   **`sort.SortBy`** (string, optional): The field name to sort the results by. (The API typically sorts by creation date if not specified).
+*   **Responses**:
+    *   `200 OK`:
+        ```json
+        {
+            "data": [
+                {
+                    // WithdrawCryptoRequest object
+                    "id": "int",
+                    "asset": { "symbol": "string", ... },
+                    "amount": "decimal",
+                    "transferRequestNetwork": { "name": "string", ... },
+                    "transferType": "string",
+                    "state": "string",
+                    "createdAt": "datetime",
+                    // ... other relevant properties
+                }
+            ],
+            "page": "int",
+            "pageSize": "int",
+            "count": "int", // Number of items on the current page
+            "totalCount": "int" // Total number of items across all pages
+        }
+        ```
+
+---
+
+### 3. Get Crypto Withdrawal Request by ID
+
+Retrieves a specific crypto withdrawal request by its ID for the authenticated user.
+
+*   **URL**: `crypto-withdraw/crypto-withdraw-request/{requestId}`
+*   **Method**: `GET`
+*   **Authentication**: Required
+*   **Path Parameters**:
+    *   **`requestId`** (integer, required): The unique identifier of the crypto withdrawal request.
+*   **Responses**:
+    *   `200 OK`:
+        ```json
+        {
+            // Full WithdrawCryptoRequest object
+            "id": "int",
+            "asset": { "symbol": "string", ... },
+            "amount": "decimal",
+            "transferRequestNetwork": { "name": "string", ... },
+            "transferType": "string",
+            "state": "string",
+            "createdAt": "datetime",
+            "networkTransaction": { // if available
+                "hash": "string",
+                "source": { "publicKey": "string", ... },
+                "destination": { "publicKey": "string", ... }
+            }
+            // ... other relevant properties
+        }
+        ```
+    *   `400 Bad Request`: If the request does not belong to the authenticated user.
+    *   `404 Not Found`: If no request with the given `requestId` exists.
+
+---
+
+### 4. Get Crypto Withdrawal Request by Track ID
+
+Retrieves a specific crypto withdrawal request by its client-provided track ID for the authenticated user.
+
+*   **URL**: `crypto-withdraw/crypto-withdraw-request/track/{trackId}`
+*   **Method**: `GET`
+*   **Authentication**: Required
+*   **Path Parameters**:
+    *   **`trackId`** (string, required): The client-generated tracking ID of the crypto withdrawal request.
+*   **Responses**:
+    *   `200 OK`:
+        ```json
+        {
+            // Full WithdrawCryptoRequest object (same as "Get by ID" response)
+            "id": "int",
+            "asset": { "symbol": "string", ... },
+            "amount": "decimal",
+            "transferRequestNetwork": { "name": "string", ... },
+            "transferType": "string",
+            "state": "string",
+            "createdAt": "datetime",
+            "networkTransaction": { // if available
+                "hash": "string",
+                "source": { "publicKey": "string", ... },
+                "destination": { "publicKey": "string", ... }
+            }
+            // ... other relevant properties
+        }
+        ```
+    *   `400 Bad Request`: If the request does not belong to the authenticated user.
+    *   `404 Not Found`: If no request with the given `trackId` exists.
+
+---
