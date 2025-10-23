@@ -228,26 +228,6 @@ Returns an object containing a list of `Order` objects belonging to the authenti
 ---
 
 
-
-## Market Data
-
-### 1. Get Market Information
-Retrieves detailed information about a specific trading market.
-
-`GET /market/{baseSymbol}-{quoteSymbol}`
-
-**Purpose:** Provides details about a specific trading pair, including its type (P2P, OTC, etc.). This endpoint is publicly accessible without authentication.
-
-**URL Parameters:**
-*   `baseSymbol` (string, required): The symbol of the base asset (e.g., "BTC").
-*   `quoteSymbol` (string, required): The symbol of the quote asset (e.g., "USDT").
-
-**Response:**
-Returns the `Market` object, which contains information like current prices, trading rules, and potentially order book details for OTC markets.
-
----
-
-
 ## Market Positions
 
 ### 1. Get Market Position
