@@ -1,72 +1,290 @@
 # AbanPrime API Documentation
 
 ## Overview
-The Futures API allows authenticated users to manage their futures trading positions, predict potential debts, manage orders, and retrieve market information. All non-admin operations are covered in this documentation.
+The Futures API allows authenticated users to manage their futures trading positions, predict potential debts, manage orders, and retrieve market information.
 
-## Authentication & Example Request
- 
-The authentication method is based on an **HMAC-SHA256 signature** with your API key and secret.
+# API Authentication
 
----
-
-## 1. Authentication Overview
-
-Every request to the API must include:
-
-- **API-KEY** – your public API key.
-- **API-SIGN** – a Base64-encoded HMAC-SHA256 signature of the request.
-- **TIMESTAMP** – the current UTC timestamp in milliseconds since the Unix epoch.
-
-### How the signature (`API-SIGN`) is created
-
-1. Build a string to sign:
-{request_path}{http_method}{api_key}{timestamp}
-
-Example:
-
-/user/userGETmyApiKeyHere1735961812345
-
-2. Hash the string with **HMAC-SHA256** using your **Secret Key**.  
-3. Base64-encode the result → this is the `API-SIGN`.  
-
-**Note: Do not include query string in {request_path}**
-
-## 2. Required Headers
-
-Every request must include:
-
-| Header      | Description |
-|-------------|-------------|
-| `API-KEY`   | Your API key |
-| `API-SIGN`  | Generated HMAC signature |
-| `TIMESTAMP` | Current UTC timestamp in milliseconds |
+Authenticate your API requests by signing them with your private key. The server
+keeps only your public key — no shared secret is ever sent.
 
 ---
 
-## 3. Example Request & Response
+## 1. Get your credentials
 
-**Request:**
+you can get your API key and API secret from your account -> profile -> API key management section.
 
-GET https://api.abanprime.com/user/user
+---
 
-**Headers:**
-API-KEY: your-api-key
-API-SIGN: generated-signature
-TIMESTAMP: 1735961812345
+## 2. Sign each request
 
+Every request carries three headers. Two are plain values; the third,
+`API-SIGNATURE`, is a cryptographic signature you compute over the contents of the
+request. The server recomputes the same signature from your stored public key — if
+the two match, the request is proven to come from you and to be unaltered.
 
-**Response (example):**
+### Required headers
 
-```json
+| Header          | Value                                                       |
+|-----------------|-------------------------------------------------------------|
+| `API-KEY-ID`    | Your `keyId`.                                               |
+| `API-TIMESTAMP` | Current time in Unix epoch **milliseconds** (e.g. `1718640000123`). |
+| `API-SIGNATURE` | Base64 Ed25519 signature of the canonical message (below).  |
+
+### What you sign: the canonical message
+
+You don't sign the raw HTTP request. Instead you build one text string — the
+**canonical message** — that uniquely describes the request, and you sign that. It
+is the concatenation, in order and with **no separators between the parts**, of:
+
+```
+{timestamp}{METHOD}{path}{sha256_hex(body)}
+```
+
+Because the signature is computed over these four parts, changing any of them — the
+time, the method, the URL path, or a single byte of the body — produces a different
+signature and the request is rejected. This is what protects the request from being
+replayed later or tampered with in transit.
+
+### How to build and sign it, step by step
+
+1. **Take the current timestamp** as Unix epoch milliseconds, e.g. `1718640000123`.
+   Use this exact value in two places: the `API-TIMESTAMP` header, and the start of
+   the message. They must be identical strings.
+
+2. **Take the HTTP method in uppercase** — `GET`, `POST`, `PUT`, or `DELETE`.
+
+3. **Take the request path**, starting with `/`, *without* the host and *without*
+   the query string. For `https://api.abanprime.com/cross-margin/order?x=1` the path
+   is `/cross-margin/order`.
+
+4. **Hash the body.** Compute the SHA-256 of the request body and write it as
+   **lowercase hexadecimal**. Hash the body exactly as you will send it — the same
+   bytes, field order, and whitespace. If the request has no body (most `GET` and
+   `DELETE` calls), hash the empty string; that hash is always
+   `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+
+5. **Concatenate** the four parts into one string, with nothing between them.
+
+6. **Sign** the UTF-8 bytes of that string with your Ed25519 **private key**.
+
+7. **Base64-encode** the signature and put it in the `API-SIGNATURE` header.
+
+Then send the request with the three headers set.
+
+### Worked example
+
+You can verify your implementation against this fixed example. The key below is for
+testing only — **do not use it in production**:
+
+| Field                  | Value                                          |
+|------------------------|------------------------------------------------|
+| Private key (base64)   | `AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=`  |
+| Public key (base64)    | `ebVWLo/mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ=`  |
+
+Signing this request:
+
+| Part      | Value                            |
+|-----------|----------------------------------|
+| timestamp | `1718640000123`                  |
+| method    | `POST`                           |
+| path      | `/cross-margin/order`            |
+| body      | `{"symbol":"BTCIRT","amount":1}` |
+
+Step 4 — the body hash:
+
+```
+fdf9b043f745e3dea5cc04f92cfd24131d22914028009cec4d6093c743b38123
+```
+
+Step 5 — the canonical message:
+
+```
+1718640000123POST/cross-margin/orderfdf9b043f745e3dea5cc04f92cfd24131d22914028009cec4d6093c743b38123
+```
+
+Steps 6–7 — the signature, which becomes `API-SIGNATURE`:
+
+```
+bJOBJA/0vY1Wtd2qmKmxi1PHyK56RkYU8YXp+o/WRhSrnXIVBgzzmrTDKJGzY81kMgJNuYObVo19ERXkUEoMBQ==
+```
+
+If your code produces the same message string and the same signature for this key
+and input, it is signing correctly. (Ed25519 is deterministic: the same key and
+message always yield the same signature, so this doubles as a known-answer test.)
+
+### Timing
+
+Sign and send promptly. The server rejects any request whose timestamp is more than
+**20 seconds** old, so keep your clock synced (e.g. via NTP).
+
+The code samples in [section 3](#3-code-samples) do all of these steps for you.
+
+---
+
+## 3. Code samples
+
+Each sample signs and sends `POST /cross-margin/order`. Replace the base URL,
+`keyId`, and `privateKey` with your own.
+
+### Python
+
+```bash
+pip install cryptography requests
+```
+
+```python
+import base64, hashlib, time, requests
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+BASE_URL = "https://api.abanprime.com"
+KEY_ID = "your-key-id"
+PRIVATE_KEY_B64 = "your-base64-private-key"
+
+def signed_headers(method, path, body):
+    timestamp = str(int(time.time() * 1000))  # epoch milliseconds
+    body_hash = hashlib.sha256(body.encode()).hexdigest()
+    message = f"{timestamp}{method.upper()}{path}{body_hash}"
+    key = Ed25519PrivateKey.from_private_bytes(base64.b64decode(PRIVATE_KEY_B64))
+    signature = base64.b64encode(key.sign(message.encode())).decode()
+    return {
+        "API-KEY-ID": KEY_ID,
+        "API-TIMESTAMP": timestamp,
+        "API-SIGNATURE": signature,
+        "Content-Type": "application/json",
+    }
+
+path = "/cross-margin/order"
+body = '{"symbol":"BTCIRT","amount":1}'
+resp = requests.post(BASE_URL + path, data=body.encode(), headers=signed_headers("POST", path, body))
+print(resp.status_code, resp.text)
+```
+
+### .NET (C#)
+
+```bash
+dotnet add package BouncyCastle.Cryptography
+```
+
+```csharp
+using System.Security.Cryptography;
+using System.Text;
+using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Crypto.Signers;
+
+const string BaseUrl = "https://api.abanprime.com";
+const string KeyId = "your-key-id";
+const string PrivateKeyB64 = "your-base64-private-key";
+
+string method = "POST", path = "/cross-margin/order";
+string body = "{\"symbol\":\"BTCIRT\",\"amount\":1}";
+
+string timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(); // epoch milliseconds
+string bodyHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(body))).ToLowerInvariant();
+string message = $"{timestamp}{method.ToUpperInvariant()}{path}{bodyHash}";
+
+var key = new Ed25519PrivateKeyParameters(Convert.FromBase64String(PrivateKeyB64), 0);
+var signer = new Ed25519Signer();
+signer.Init(true, key);
+var msg = Encoding.UTF8.GetBytes(message);
+signer.BlockUpdate(msg, 0, msg.Length);
+string signature = Convert.ToBase64String(signer.GenerateSignature());
+
+using var http = new HttpClient();
+var request = new HttpRequestMessage(HttpMethod.Post, BaseUrl + path)
 {
-  "id": 12345,
-  "email": "user@example.com",
-  "status": "active"
+    Content = new StringContent(body, Encoding.UTF8, "application/json")
+};
+request.Headers.Add("API-KEY-ID", KeyId);
+request.Headers.Add("API-TIMESTAMP", timestamp);
+request.Headers.Add("API-SIGNATURE", signature);
+
+var response = await http.SendAsync(request);
+Console.WriteLine((int)response.StatusCode);
+Console.WriteLine(await response.Content.ReadAsStringAsync());
+```
+
+### Java
+
+```xml
+<dependency>
+    <groupId>org.bouncycastle</groupId>
+    <artifactId>bcprov-jdk18on</artifactId>
+    <version>1.78.1</version>
+</dependency>
+```
+
+```java
+import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters;
+import org.bouncycastle.crypto.signers.Ed25519Signer;
+
+import java.net.URI;
+import java.net.http.*;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Base64;
+
+public class ApiSignatureClient {
+    static final String BASE_URL = "https://api.abanprime.com";
+    static final String KEY_ID = "your-key-id";
+    static final String PRIVATE_KEY_B64 = "your-base64-private-key";
+
+    public static void main(String[] args) throws Exception {
+        String method = "POST", path = "/cross-margin/order";
+        String body = "{\"symbol\":\"BTCIRT\",\"amount\":1}";
+
+        String timestamp = Long.toString(System.currentTimeMillis()); // epoch milliseconds
+        String bodyHash = sha256Hex(body);
+        String message = timestamp + method.toUpperCase() + path + bodyHash;
+
+        Ed25519PrivateKeyParameters key =
+                new Ed25519PrivateKeyParameters(Base64.getDecoder().decode(PRIVATE_KEY_B64), 0);
+        Ed25519Signer signer = new Ed25519Signer();
+        signer.init(true, key);
+        byte[] msg = message.getBytes(StandardCharsets.UTF_8);
+        signer.update(msg, 0, msg.length);
+        String signature = Base64.getEncoder().encodeToString(signer.generateSignature());
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + path))
+                .header("API-KEY-ID", KEY_ID)
+                .header("API-TIMESTAMP", timestamp)
+                .header("API-SIGNATURE", signature)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> response =
+                HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println(response.statusCode());
+        System.out.println(response.body());
+    }
+
+    static String sha256Hex(String input) throws Exception {
+        byte[] d = MessageDigest.getInstance("SHA-256").digest(input.getBytes(StandardCharsets.UTF_8));
+        StringBuilder sb = new StringBuilder(d.length * 2);
+        for (byte b : d) {
+            sb.append(Character.forDigit((b >> 4) & 0xF, 16));
+            sb.append(Character.forDigit(b & 0xF, 16));
+        }
+        return sb.toString();
+    }
 }
 ```
-## `Time Endpoint`
 
-This controller provides endpoints related to server time that can be used for api signing.
+---
+
+## 5. Common errors
+
+| Message                        | Cause                                                         |
+|--------------------------------|---------------------------------------------------------------|
+| `Invalid signature`            | Method, path, or body don't match what was signed.            |
+| `Timestamp expired`            | Request older than 20 seconds — check your clock.             |
+| `Invalid timestamp`            | `API-TIMESTAMP` is not epoch milliseconds.                    |
+| `API credential is not active` | The credential was revoked.                                   |
+| Permission error               | The action needs a scope your credential wasn't granted.      |
+
+
 
 ### 1. Get Server Time
 
@@ -290,14 +508,14 @@ Returns the `MarketPosition` object for user in the specified market. This objec
 *   **Description:** Retrieves a paginated, filterable, and searchable list of markets. If authenticated, filters by user; otherwise, retrieves public markets.
 *   **Parameters:**
     *   `page` (query): Page number.
-    *   `pageSize` (query): Page size. 
+    *   `pageSize` (query): Page size.
 *   **Responses:**
     *   `200 OK`: Returns a paginated list of market objects.
 
 ---
 
 
-## `Bank Withdraw` API Documentation 
+## `Bank Withdraw` API Documentation
 
 
 ### 1. List Bank Withdraw Requests
@@ -524,8 +742,8 @@ List your own transfer requests (withdrawals, deposits, internal, etc).
 - `AssetSymbol` (string): Only transfers involving this currency/asset symbol
 - `State` (string): Transfer state (e.g. `New`, `Processing`, `Done`)
 - `TransferRequestType` (string): Type (`Deposit`, `Withdraw`, etc)
-- `CreatedAtGte` (date): Created after this date/time  
-- `CreatedAtLte` (date): Created before this date/time  
+- `CreatedAtGte` (date): Created after this date/time
+- `CreatedAtLte` (date): Created before this date/time
 
 **Example Pagination:**
 - `Page`: which page to return (default is 1)
