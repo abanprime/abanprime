@@ -290,7 +290,7 @@ public class ApiSignatureClient {
 
 This endpoint returns the current server timestamp.
 
-*   **Endpoint:** `GET /api/Time`
+*   **Endpoint:** `GET /public/api/time`
 *   **Successful Response (`200 OK`):**
     ```json
     1678886400000 // Example: A long integer representing the server timestamp (e.g., Unix timestamp in milliseconds).
@@ -470,7 +470,7 @@ Returns the `Market` object, which contains information like current prices, tra
 ### 1. Get Market Position
 Retrieves the market position for the authenticated user in a specific market.
 
-`GET /market-position/{baseSymbol}-{quoteSymbol}`
+`GET /cross-margin/market-position/{baseSymbol}-{quoteSymbol}`
 
 **Purpose:** Allows the authenticated user to view their market position (e.g., open quantity, PNL, average entry price) for a given trading pair within their cross margin account.
 
@@ -489,7 +489,7 @@ Returns the `MarketPosition` object for user in the specified market. This objec
 
 #### 1. Get Market Information
 
-*   **Endpoint:** `GET /futures/market/{baseSymbol}-{quoteSymbol}`
+*   **Endpoint:** `GET /public/futures/market/{baseSymbol}-{quoteSymbol}`
 *   **Description:** Retrieves market information for a given base and quote asset pair.
 *   **Parameters:**
     *   `baseSymbol` (route, `string`): The symbol of the base asset (e.g., "BTC").
@@ -504,7 +504,7 @@ Returns the `MarketPosition` object for user in the specified market. This objec
 
 #### 2. List Markets (General)
 
-*   **Endpoint:** `GET /futures/markets`
+*   **Endpoint:** `GET /public/futures/markets`
 *   **Description:** Retrieves a paginated, filterable, and searchable list of markets. If authenticated, filters by user; otherwise, retrieves public markets.
 *   **Parameters:**
     *   `page` (query): Page number.
