@@ -323,7 +323,9 @@ The `Order.OrderDto` is a data transfer object used for creating and simulating 
 ---
 
 ### 1. Place Order
-`POST cross-margin/order`
+`POST /cross-margin/order`
+
+**Required scope:** `Order`
 
 **Purpose:** Allows the authenticated user to create a new order (Market or Limit) which will be associated with their cross margin account.
 
@@ -340,7 +342,9 @@ Returns the complete `Order` object that was created, including its current stat
 ### 2. Simulate Order
 Simulates an order without actually placing it.
 
-`POST cross-margin/order/simulate`
+`POST /cross-margin/order/simulate`
+
+**Required scope:** `Order`
 
 **Purpose:** Allows user to simulate an order to understand its potential outcome and effects on their cross margin account (e.g., estimated filled quantity, price, fees) before actual execution.
 
@@ -358,7 +362,7 @@ Returns the simulated `Order` object with updated information (e.g., estimated f
 ### 3. Get Order by ID
 Retrieves the details of a specific order by its integer ID.
 
-`GET cross-margin/order/{orderId:int}`
+`GET /cross-margin/order/{orderId:int}`
 
 **Purpose:** Allows user to fetch the full details of a specific order they own.
 
@@ -371,7 +375,7 @@ Returns the complete `Order` object.
 ### 4. Get Order by Track
 Retrieves the details of a specific order by its GUID (track ID).
 
-`GET cross-margin/order/{orderTrack:guid}`
+`GET /cross-margin/order/{orderTrack:guid}`
 
 **Purpose:** Allows the authenticated user to fetch the full details of a specific order they own using its globally unique identifier.
 
@@ -384,7 +388,9 @@ Returns the complete `Order` object if the authenticated user is the owner of th
 ### 5. Cancel Limit Order by ID
 Cancels an open limit order by its integer ID.
 
-`DELETE cross-margin/order/{orderId:int}`
+`DELETE /cross-margin/order/{orderId:int}`
+
+**Required scope:** `Order`
 
 **Purpose:** Allows user to cancel an existing limit order they own before it is filled or partially filled. Only limit orders can be canceled this way.
 
@@ -397,7 +403,9 @@ Returns the updated `Order` object, reflecting its "Cancelled" status, if the ca
 ### 6. Cancel Limit Order by Track
 Cancels an open limit order by its GUID (track ID).
 
-`DELETE cross-margin/order/{orderTrack:guid}`
+`DELETE /cross-margin/order/{orderTrack:guid}`
+
+**Required scope:** `Order`
 
 **Purpose:** Allows user to cancel an existing limit order they own before it is filled or partially filled, using its track Id. Only limit orders can be canceled this way.
 
@@ -410,7 +418,7 @@ Returns the updated `Order` object, reflecting its "Cancelled" status, if the ca
 ### 7. List Orders
 Retrieves a paginated list of orders for the authenticated user, with filtering options.
 
-`GET cross-margin/orders`
+`GET /cross-margin/orders`
 
 **Purpose:** Provides a way for user to view all their active and historical orders, with optional filtering and pagination.
 
@@ -433,6 +441,7 @@ Returns an object containing a list of `Order` objects belonging to the authenti
 #### 8. Change Order Price
 
 *   **Endpoint:** `PUT /futures/order/{orderId:int}`
+*   **Required scope:** `Order`
 *   **Description:** Changes the price of an existing limit order.
 *   **Parameters:**
     *   `orderId` (route, `int`): The ID of the limit order to modify.
@@ -451,7 +460,7 @@ Returns an object containing a list of `Order` objects belonging to the authenti
 ### 1. Get Market Information
 Retrieves detailed information about a specific trading market.
 
-`GET /market/{baseSymbol}-{quoteSymbol}`
+`GET /public/cross-margin/market/{baseSymbol}-{quoteSymbol}`
 
 **Purpose:** Provides details about a specific trading pair, including its type (P2P, OTC, etc.). This endpoint is publicly accessible without authentication.
 
@@ -596,6 +605,7 @@ This endpoint allows a user to retrieve a paginated and filtered list of their b
 This endpoint allows a user to initiate a new bank withdrawal request.
 
 *   **Endpoint:** `POST /bank-withdraw/bank-withdraw-request`
+*   **Required scope:** `FiatWithdrawal`
 *   **Description:** Creates a new bank withdrawal request for the authenticated user.
 *   **Request Body (`application/json`):**
     ```json
@@ -647,6 +657,7 @@ This endpoint allows a user to initiate a new bank withdrawal request.
 This endpoint allows a user to preview the details of a bank withdrawal request without actually creating it. This can be used to see calculated fees or other system-generated details.
 
 *   **Endpoint:** `POST /bank-withdraw/bank-withdraw-request/preview`
+*   **Required scope:** `FiatWithdrawal`
 *   **Description:** Provides a preview of a bank withdrawal request based on the provided details, including estimated fees. The request is not persisted.
 *   **Request Body (`application/json`):**
     ```json
