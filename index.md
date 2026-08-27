@@ -391,6 +391,66 @@ Only assets with an existing balance record are included. If the account has no 
 *   `401 Unauthorized`: The `API-TOKEN` header is missing or invalid.
 
 
+
+## Wallets
+
+### 1. Get User Wallet by Network
+Retrieves the authenticated user's hot wallet for the requested network. If the user does not already have a wallet for that network, the endpoint creates one and returns it.
+
+`GET /wallet/wallet`
+
+**Authentication:** Required. The endpoint supports the authentication schemes described in [API Authentication](#api-authentication), including JWT bearer authentication and API credentials.
+
+**Query Parameters:**
+*   `networkName` (string, required): The name of the crypto network for which to retrieve the wallet (for example, `TRC20` or `BSC`).
+
+**Request Body:** None. When using Ed25519 API-signature authentication, hash the empty body and omit the query string from the canonical path, signing `/wallet/wallet`.
+
+**Example Request:**
+
+```http
+GET /wallet/wallet?networkName=TRC20
+Authorization: Bearer <your-jwt>
+```
+
+For an API-signature request, replace the `Authorization` header with the required `API-KEY-ID`, `API-TIMESTAMP`, and `API-SIGNATURE` headers.
+
+**Successful Response (`200 OK`):**
+Returns the wallet object associated with the authenticated user and requested network. The response includes:
+
+*   `publicKey` (string): The wallet's public address on the requested network.
+*   `user` (object): The user associated with the wallet.
+*   `network` (object): The network associated with the wallet, including its `name`.
+*   `walletNetwork` (object): The wallet's network reference; it represents the same network as `network`.
+*   `version` (integer): The wallet implementation version.
+
+Abridged example:
+
+```json
+{
+  "id": 123,
+  "name": "T...wallet-address",
+  "type": "Wallet",
+  "publicKey": "T...wallet-address",
+  "version": 1,
+  "user": {
+    "id": 456
+  },
+  "network": {
+    "id": 7,
+    "name": "TRC20"
+  },
+  "walletNetwork": {
+    "id": 7,
+    "name": "TRC20"
+  }
+}
+```
+
+**Error Responses:**
+*   `401 Unauthorized`: Authentication is missing or invalid.
+*   `404 Not Found`: The requested network does not exist.
+
 ---
 
 ## Orders
