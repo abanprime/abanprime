@@ -302,6 +302,97 @@ All API URLs listed in this documentation are relative to the following base URL
 
 ---
 
+## Portfolio
+
+### 1. Get User Balance
+Retrieves the authenticated user's cross-margin balance for a single asset.
+
+`GET /portfolio/balance/{symbol}`
+
+**Authentication:** Required. Sign the request using the headers described in [API Authentication](#api-authentication).
+
+**Required scope:** None (read-only endpoint).
+
+**URL Parameters:**
+*   `symbol` (string, required): The asset symbol. Symbols are case-sensitive; use the uppercase symbol returned by the assets or markets endpoints (for example, `USDT` or `BTC`).
+
+**Request Body:** None. When constructing the canonical message, use the SHA-256 hash of an empty body.
+
+**Successful Response (`200 OK`):**
+Returns the account-balance object for the requested asset. The most relevant fields are:
+
+*   `balance` (decimal): The user's total balance in the asset.
+*   `blocked` (decimal): The portion reserved by open orders or other pending operations.
+*   `asset.symbol` (string): The asset symbol associated with the balance.
+
+The currently available amount is `balance - blocked`.
+
+Abridged example (the response also contains account, asset, and audit metadata):
+
+```json
+{
+  "balance": 1250.75,
+  "blocked": 200.00,
+  "asset": {
+    "symbol": "USDT",
+    "name": "Tether",
+    "quantityDecimals": 6,
+    "priceDecimals": 2
+  }
+}
+```
+
+### 2. Get All User Balances
+Retrieves all existing asset balances in the authenticated user's cross-margin account.
+
+`GET /portfolio/balances`
+
+**Authentication:** Required. This endpoint currently uses legacy API-token authentication. Send the token in the `API-TOKEN` header; the Ed25519 `API-KEY-ID`, `API-TIMESTAMP`, and `API-SIGNATURE` headers are not accepted by this endpoint.
+
+**Query Parameters:** None.
+
+**Request Body:** None.
+
+**Successful Response (`200 OK`):**
+Returns an array containing the user's existing account-balance objects. Each item has the same structure as the single-asset balance response above. The most relevant fields are:
+
+*   `balance` (decimal): The user's total balance in the asset.
+*   `blocked` (decimal): The portion reserved by open orders or other pending operations.
+*   `asset.symbol` (string): The asset symbol associated with the balance.
+
+The currently available amount for each asset is `balance - blocked`.
+
+Abridged example (each item also contains account, asset, and audit metadata):
+
+```json
+[
+  {
+    "balance": 1250.75,
+    "blocked": 200.00,
+    "asset": {
+      "symbol": "USDT",
+      "name": "Tether"
+    }
+  },
+  {
+    "balance": 0.035,
+    "blocked": 0.005,
+    "asset": {
+      "symbol": "BTC",
+      "name": "Bitcoin"
+    }
+  }
+]
+```
+
+Only assets with an existing balance record are included. If the account has no balance records, the endpoint returns an empty array (`[]`). Use `GET /portfolio/balance/{symbol}` to retrieve a specific valid asset as a zero balance when no record exists yet.
+
+**Error Responses:**
+*   `401 Unauthorized`: The `API-TOKEN` header is missing or invalid.
+
+
+---
+
 ## Orders
 
 ### `Order.OrderDto` Definition
