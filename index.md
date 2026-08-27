@@ -399,8 +399,6 @@ Retrieves the authenticated user's hot wallet for the requested network. If the 
 
 `GET /wallet/wallet`
 
-**Authentication:** Required. The endpoint supports the authentication schemes described in [API Authentication](#api-authentication), including JWT bearer authentication and API credentials.
-
 **Query Parameters:**
 *   `networkName` (string, required): The name of the crypto network for which to retrieve the wallet (for example, `TRC20` or `BSC`).
 
