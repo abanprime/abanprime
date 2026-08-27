@@ -404,13 +404,6 @@ Retrieves the authenticated user's hot wallet for the requested network. If the 
 
 **Request Body:** None. When using Ed25519 API-signature authentication, hash the empty body and omit the query string from the canonical path, signing `/wallet/wallet`.
 
-**Example Request:**
-
-```http
-GET /wallet/wallet?networkName=TRC20
-Authorization: Bearer <your-jwt>
-```
-
 For an API-signature request, replace the `Authorization` header with the required `API-KEY-ID`, `API-TIMESTAMP`, and `API-SIGNATURE` headers.
 
 **Successful Response (`200 OK`):**
