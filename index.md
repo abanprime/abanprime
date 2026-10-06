@@ -640,7 +640,7 @@ Retrieves a paginated list of orders for the authenticated user, with filtering 
 *   `pagination.page` (integer, optional, default: 0): The page number to retrieve (0-indexed).
 *   `pagination.pageSize` (integer, optional, default: 20): The number of items per page.
 *   `filter.type` (enum: `Limit`, `Market`, optional): Filters orders by their type.
-*   `filter.state` (enum: `New`, `PartiallyFilled`, `Filled`, `Cancelled`, `Rejected`, optional): Filters orders by their current state.
+*   `filter.state` (enum: `New`, `Filled`, `Cancelled`, optional): Filters orders by their current state.
 *   `filter.side` (enum: `Buy`, `Sell`, optional): Filters orders by their side.
 *   `filter.marketType` (enum: `P2P`, `OTC`, `Manual`, optional): Filters orders by the market type.
 *   `filter.baseAssetSymbol` (string, optional): Filters orders by the base asset symbol (e.g., "BTC").
